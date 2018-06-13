@@ -1,8 +1,23 @@
 pico-8 cartridge // http://www.pico-8.com
 version 16
 __lua__
--- bouncy ball demo
--- by zep
+
+function find_where(t, f)
+  for key, value in pairs(t) do
+    if f(value) then return value end
+  end
+  return false
+end
+
+function has (tab, val)
+    for index, value in pairs(tab) do
+        if value == val then
+            return true
+        end
+    end
+    return false
+end
+
 function vadd(a,b)
   return {x=a.x+b.x, y=a.y+b.y}
 end
@@ -28,9 +43,7 @@ function magsq(a)
 end
 
 function v_mag(a,b)
-
   return sqrt((a.x-b.x)^2+(a.y-b.y)^2)
-
 end
 
 function norm(a)
@@ -80,46 +93,66 @@ end
 
 holds = {}
 player = {}
+held_holds = {}
 tick = 0
 size  = 4
-floor_y = 100
+reach = 18
+floor_y = 110
 
 -- starting velocity
 velx = 0
 vely = 0
 colors = {
-  8,9,11,12
+  8,12,11,9
 } 
 function distance_sort( a,b ) 
       pup = vadd(player, {x=0,y=-5})
       return distance(a,pup) < distance(b,pup)
 end
 
+function label_holds(holds)
+  t = {1,2,3,4}
+  for k,v in pairs(held_holds)do
+    del(t, v.c)
+  end
+  types = {}
+  for i,v in pairs(t) do
+    add(types,v)
+  end
+  i = 0
+  for k,h in pairs(holds) do
+    if has(held_holds,h) then
+      
+    else
+      h.c = types[1 + (i%count(types))] 
+      i+=1
+    end
+  end
+end
 
 function _init()
       player.x = 50
       player.y = 50 
 
-      for x=8,120,20 do
-            for y=8,80,20 do
-                  hold = {x=x+rnd(5), y=y+rnd(5), c=rnd(4)+3}
+      for x=8,120,15 do
+            for y=8,100,15 do
+                  hold = {x=x+rnd(10), y=y+rnd(10), c=0}
                   add(holds, hold)
             end
       end
 end
 
 function draw_hold(i,hold)
-      color = colors[i] 
-      if( i> 4 ) then
+      color = colors[hold.c] 
+      if( i > 4 ) then
             color = 6
       end
       circfill(hold.x,hold.y,1.8,color)
+
 end
 
-function _draw_reach(i)
- if(btn(i))then
-     line(player.x,player.y,holds[i+1].x,holds[i+1].y,colors[i+1])
- end
+function _draw_reach(hold)
+  line(player.x,player.y,hold.x,hold.y,colors[hold.c])
 end
 
 function _draw()
@@ -128,7 +161,7 @@ function _draw()
 --  print("press ❎ to bump",
       --  32,10, 6)
  
---  circfill(player.x,player.y,size,14)
+ circ(player.x,player.y,reach,14)
  
  spr(1,player.x-4-velx, 
        player.y-4-vely)
@@ -136,17 +169,16 @@ function _draw()
  for i,h in pairs(holds) do draw_hold(i,h) end
  rectfill(0,floor_y,127,127,12)
 
- for c = 0,3 do
-  _draw_reach(c)
-  end
+foreach(held_holds, _draw_reach)
 
  spr(6,116,4)
 end
+
 function pull_hold(hold) 
 
 end
-function _update60()
 
+function _update60()
  -- move ball left/right
 
  if player.x+velx < 0+size or
@@ -154,7 +186,7 @@ function _update60()
  then
   -- bounce on side!
   velx *= -0.5 
-  sfx(1)
+  -- sfx(1)
  else
   player.x += velx
  end
@@ -166,37 +198,39 @@ function _update60()
  then
   -- bounce on floor/ceiling
   vely = vely * -0.5
-  sfx(0)
+  -- sfx(0)
   
  else
   player.y += vely
  end
- vely += 0.2
- 
- if (btn(5)) then
-     pulldir = norm(vsub(player,holds[2])) 
-     pull = vmult(pulldir, distance(player, holds[1])*0.1)
-     velx -= pull.x
-     vely -= pull.y
---   sfx(2)xx
- end
-
+ vely += 0.3
+ held_holds = {}
+ hcount = 0
  for h = 1,4 do
   -- pull_hold(holds[h])
-  if(btn(h-1)) then
-    pulldir = norm(vsub(player,holds[h])) 
-    pull = vmult(pulldir, distance(player, holds[h])*0.1)
-    velx -= pull.x
-    vely -= pull.y
+  if(btn(h-1)) and hcount<2 then
+    hcount+=1
+    hold = find_where(holds, function (ho) return ho.c ==h end)
+    if hold then
+      d = distance(player, hold)
+      if d < reach then
+        add(held_holds, hold)
+        pulldir = norm(vsub(player,hold)) 
+        pull = vmult(pulldir, d*0.1)
+        velx -= pull.x
+        vely -= pull.y
+      end
+    end
   end
 end
 
 
- velx *= 0.8
- vely *= 0.8
+ velx *= 0.9
+ vely *= 0.9
  if tick==10 then
   qsort( holds, distance_sort )
  end
+ label_holds(holds)
  tick = (tick+1) %11
 
 end
