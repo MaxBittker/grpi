@@ -107,7 +107,7 @@ colors = {
   8,12,11,10
 } 
 function distance_sort( a,b ) 
-      pup = vadd(player, {x=0,y=-5})
+      pup = vadd(player, {x=0,y=-8})
       return distance(a,pup) < distance(b,pup)
 end
 
@@ -130,13 +130,24 @@ function label_holds(holds)
     end
   end
 end
+function balance_holds()
+  -- culled = 0
+  for i, hold in pairs(holds) do
+    if hold.y - player.y > 60 then
+    -- culled++
+    -- del(holds,v)
+    floor_y = hold.y
+    hold.y-=128
+    end
+  end
+end
 
 function _init()
       player.x = 50
-      player.y = 50 
-
+      player.y = 90 
+  
       for x=8,120,10 do
-            for y=8,100,15 do
+            for y=-20,100,15 do
                   hold = {x=x+rnd(10), y=y+rnd(10), c=0}
                   add(holds, hold)
             end
@@ -146,7 +157,7 @@ end
 function draw_hold(i,hold)
       color = colors[hold.c] 
       if( i > 4 ) then
-            color = 15
+            color = 7
       end
       circfill(hold.x,hold.y,1.8,color)
 
@@ -161,7 +172,7 @@ function _draw()
 
 
  camera(0,player.y-90)
-  map(0,0,0,-80,20,1200)
+  map(0,0,0,-120,15,1200)
 --  print("press ❎ to bump",
       --  32,10, 6)
  
@@ -201,16 +212,12 @@ function _update60()
  
  -- move ball up/down
 
- if player.y+vely < 0+size or
-    player.y+vely > floor_y-size
+ if
+    player.y+vely > floor_y-size+20
  then
-  -- bounce on floor/ceiling
-  vely = vely * -0.5
-  -- sfx(0)
-  
- else
-  player.y += vely
+    vely-=0.2
  end
+  player.y += vely
  vely += 0.2
  old_held_holds = held_holds
  held_holds = {}
@@ -232,7 +239,7 @@ function _update60()
         end
         pulldir = norm(vsub(player,hold)) 
         ds = (d-(reach*0.25)) ^ 2
-        if strain then ds=400 end
+        if strain then ds=300/max(1,count(old_held_holds)) end
         pull = vmult(pulldir,  ds  *0.01)
         velx -= pull.x
         vely -= pull.y
@@ -246,6 +253,7 @@ end
  vely *= 0.9
  if tick==10 then
   qsort( holds, distance_sort )
+  balance_holds()
  end
  label_holds(holds)
  tick = (tick+1) %11
